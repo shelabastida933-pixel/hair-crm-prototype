@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>效果对比图 · 生成器</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#EDF0F2;display:flex;justify-content:center;
+    min-height:100vh;padding:20px 0;color:#1A1D21;
+  }
+  .wrap{width:100%;max-width:430px;padding:0 16px;}
+
+  h2{font-size:19px;margin-bottom:4px;}
+  .tip{font-size:14px;color:#8B9198;margin-bottom:16px;}
+
+  /* ============ 生成出来的对比图 ============ */
+  .poster{
+    background:#fff;border-radius:18px;overflow:hidden;
+    box-shadow:0 8px 30px rgba(0,0,0,.1);margin-bottom:18px;
+  }
+  .poster-head{
+    background:#00A0B4;padding:16px 20px;color:#fff;
+  }
+  .poster-head .t{font-size:17px;font-weight:700;}
+  .poster-head .s{font-size:13px;opacity:.85;margin-top:2px;}
+
+  .pair{display:flex;padding:18px 18px 8px;gap:0;}
+  .side{flex:1;text-align:center;position:relative;}
+  .side .box{
+    width:100%;aspect-ratio:3/4;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:40px;position:relative;overflow:hidden;
+  }
+  .side.before .box{background:linear-gradient(160deg,#DFE4E8,#C4CCD3);}
+  .side.after  .box{background:linear-gradient(160deg,#E4F6F9,#A8DEE6);}
+  .side .label{
+    margin-top:10px;font-size:15px;font-weight:700;
+  }
+  .side.before .label{color:#7D858C;}
+  .side.after  .label{color:#00A0B4;}
+  .side .sub{font-size:12px;color:#A8AEB4;margin-top:2px;}
+
+  .arrow{
+    width:44px;display:flex;align-items:center;justify-content:center;
+    font-size:22px;color:#00A0B4;font-weight:700;flex-shrink:0;
+    padding-bottom:40px;
+  }
+
+  .poster-body{padding:6px 20px 20px;}
+  .count{
+    display:inline-block;background:#E6F7F9;color:#00A0B4;
+    font-size:14px;font-weight:700;padding:6px 14px;border-radius:20px;
+    margin-bottom:12px;
+  }
+  .quote{
+    font-size:16px;line-height:1.75;color:#3A4249;
+    margin-bottom:16px;
+  }
+  .quote b{color:#00A0B4;}
+
+  .poster-foot{
+    border-top:1px dashed #E2E6E9;padding:14px 20px 18px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .avatar{
+    width:40px;height:40px;border-radius:50%;background:#00A0B4;
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:700;flex-shrink:0;
+  }
+  .foot-txt .n{font-size:15px;font-weight:700;}
+  .foot-txt .d{font-size:12px;color:#8B9198;}
+
+  /* ============ 控制区 ============ */
+  .ctrl{background:#fff;border-radius:16px;padding:18px;margin-bottom:14px;}
+  .ctrl .row{display:flex;align-items:center;justify-content:space-between;
+    padding:11px 0;border-bottom:1px solid #F1F3F5;}
+  .ctrl .row:last-child{border-bottom:none;}
+  .ctrl .k{font-size:15px;color:#5A6167;}
+  .ctrl .v{font-size:15px;font-weight:600;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .chip{
+    padding:9px 15px;border-radius:20px;background:#F1F3F5;
+    font-size:14px;color:#5A6167;cursor:pointer;border:none;font-family:inherit;
+  }
+  .chip.on{background:#00A0B4;color:#fff;font-weight:600;}
+
+  .btn{
+    width:100%;height:52px;border:none;border-radius:13px;
+    font-size:17px;font-weight:700;font-family:inherit;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .btn-main{background:#00A0B4;color:#fff;margin-bottom:10px;}
+  .btn-sec{background:#F1F3F5;color:#3A4249;}
+  .btn:active{opacity:.75;}
+
+  .toast{
+    position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);
+    background:rgba(26,29,33,.93);color:#fff;padding:15px 26px;
+    border-radius:13px;font-size:16px;font-weight:600;
+    opacity:0;pointer-events:none;transition:all .2s;z-index:300;
+  }
+  .toast.on{opacity:1;transform:translate(-50%,-50%) scale(1);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h2>效果对比图</h2>
+  <div class="tip">自动生成一张能直接发给客户的图</div>
+
+  <!-- ======== 成品预览 ======== -->
+  <div class="poster" id="poster">
+    <div class="poster-head">
+      <div class="t" id="pName">张姐的修复记录</div>
+      <div class="s">智绘宝养发馆 · 真实案例</div>
+    </div>
+
+    <div class="pair">
+      <div class="side before">
+        <div class="box">📷</div>
+        <div class="label" id="pBeforeLabel">8月15日</div>
+        <div class="sub" id="pBeforeSub">第 1 次</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="side after">
+        <div class="box">📷</div>
+        <div class="label" id="pAfterLabel">9月9日</div>
+        <div class="sub" id="pAfterSub">第 4 次</div>
+      </div>
+    </div>
+
+    <div class="poster-body">
+      <div class="count" id="pCount">坚持 25 天 · 4 次护理</div>
+      <div class="quote" id="pQuote">
+        才做了 <b>4 次</b>，白发就明显变少了。<br>
+        继续坚持下去，效果会更好 💪
+      </div>
+    </div>
+
+    <div class="poster-foot">
+      <div class="avatar">智</div>
+      <div class="foot-txt">
+        <div class="n">智绘宝养发馆</div>
+        <div class="d">电话 138-xxxx-8888 ｜ 微信同号</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 控制区 ======== -->
+  <div class="ctrl">
+    <div class="row"><span class="k">客户</span><span class="v" id="cName">张姐</span></div>
+    <div class="row"><span class="k">疗程进度</span><span class="v" id="cProg">4 / 12 次</span></div>
+    <div class="row"><span class="k">时间跨度</span><span class="v" id="cSpan">25 天</span></div>
+  </div>
+
+  <div class="ctrl">
+    <div style="font-size:15px;color:#5A6167;margin-bottom:2px;">配文风格</div>
+    <div class="chips">
+      <button class="chip on" onclick="setStyle(this,'warm')">温和鼓励</button>
+      <button class="chip" onclick="setStyle(this,'data')">数据说话</button>
+      <button class="chip" onclick="setStyle(this,'urgent')">催到店</button>
+    </div>
+  </div>
+
+  <button class="btn btn-main" onclick="toast('已保存到相册 ✓')">💾 保存图片</button>
+  <button class="btn btn-sec" onclick="toast('已发送给张姐 ✓')">📤 直接发给客户</button>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var STYLES = {
+  warm: {
+    count: '坚持 25 天 · 4 次护理',
+    quote: '才做了 <b>4 次</b>，白发就明显变少了。<br>继续坚持下去，效果会更好 💪'
+  },
+  data: {
+    count: '25 天 · 4 次 · 白发减少约 30%',
+    quote: '第 1 次 &rarr; 第 4 次，<b>白发覆盖面积肉眼可见减少</b>。<br>按疗程做完，改善会更稳定。'
+  },
+  urgent: {
+    count: '已隔 7 天 · 该做第 5 次了',
+    quote: '<b>中间断档会影响效果</b>，建议这几天来把第 5 次补上。<br>您看明天下午方便吗？'
+  }
+};
+
+function setStyle(el, key){
+  document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); });
+  el.classList.add('on');
+  document.getElementById('pCount').textContent = STYLES[key].count;
+  document.getElementById('pQuote').innerHTML = STYLES[key].quote;
+}
+
+var tmr;
+function toast(t){
+  var el=document.getElementById('toast');
+  el.textContent=t; el.classList.add('on');
+  clearTimeout(tmr);
+  tmr=setTimeout(function(){ el.classList.remove('on'); },1500);
+}
+</script>
+</body>
+</html>

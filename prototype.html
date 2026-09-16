@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>发丝管家 · 原型</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root{
+    --red:#E5484D;
+    --amber:#F5A623;
+    --blue:#3B82F6;
+    --ink:#1A1D21;
+    --gray:#8B9198;
+    --line:#E8EBED;
+    --bg:#F4F6F7;
+    --green:#00A0B4;
+  }
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--ink);
+    display:flex; justify-content:center; min-height:100vh;
+    font-size:17px; line-height:1.6;
+  }
+  /* 手机外框 */
+  .phone{
+    width:100%; max-width:420px; background:#fff; min-height:100vh;
+    position:relative; box-shadow:0 0 40px rgba(0,0,0,.08);
+    display:flex; flex-direction:column;
+  }
+  /* 状态栏 */
+  .statusbar{
+    height:44px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 20px; font-size:14px; color:var(--gray); flex-shrink:0;
+  }
+  /* 页面 */
+  .page{ display:none; flex:1; flex-direction:column; }
+  .page.active{ display:flex; }
+
+  /* 顶部标题 */
+  .head{
+    padding:8px 20px 20px; display:flex; align-items:baseline;
+    justify-content:space-between; flex-shrink:0;
+  }
+  .head h1{ font-size:26px; font-weight:700; letter-spacing:-.5px; }
+  .head .sub{ font-size:15px; color:var(--gray); }
+
+  /* 待办列表 */
+  .list{ flex:1; overflow-y:auto; padding:0 16px 100px; }
+  .card{
+    background:#fff; border:1.5px solid var(--line); border-radius:14px;
+    padding:18px; margin-bottom:12px; position:relative;
+    transition:transform .12s, box-shadow .12s;
+  }
+  .card:active{ transform:scale(.985); }
+  .card.urgent{ border-color:#FBD5D6; background:#FFFBFB; }
+  .card.done{ opacity:.45; }
+  .card.done .btn{ pointer-events:none; }
+  .card.done .btn-primary{ background:#C9CDD1 !important; }
+  .card-top{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .dot.r{ background:var(--red); }
+  .dot.a{ background:var(--amber); }
+  .dot.b{ background:var(--blue); }
+  .cname{ font-size:20px; font-weight:700; }
+  .ctag{
+    font-size:13px; padding:2px 9px; border-radius:20px;
+    background:#F1F3F5; color:var(--gray); margin-left:auto; font-weight:500;
+  }
+  .ctag.r{ background:#FDECEC; color:var(--red); }
+  .card-line{ font-size:16px; color:#4A5158; margin:4px 0 0 20px; }
+  .card-meta{ font-size:14px; color:var(--gray); margin:6px 0 0 20px; }
+
+  /* 按钮 */
+  .btns{ display:flex; gap:10px; margin:16px 0 0 20px; }
+  .btn{
+    flex:1; height:48px; border-radius:11px; border:none;
+    font-size:16px; font-weight:600; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-family:inherit; transition:opacity .12s;
+  }
+  .btn:active{ opacity:.7; }
+  .btn-primary{ background:var(--green); color:#fff; }
+  .btn-ghost{ background:#F1F3F5; color:#4A5158; }
+
+  /* 底部标签栏 */
+  .tabbar{
+    position:absolute; bottom:0; left:0; right:0; height:72px;
+    background:#fff; border-top:1px solid var(--line);
+    display:flex; align-items:center; padding-bottom:8px;
+  }
+  .tab{
+    flex:1; text-align:center; font-size:13px; color:var(--gray);
+    cursor:pointer; padding-top:10px;
+  }
+  .tab.on{ color:var(--green); font-weight:600; }
+  .tab .ic{ font-size:21px; display:block; margin-bottom:2px; }
+
+  /* 客户卡片页 */
+  .detail-head{
+    padding:12px 20px 20px; border-bottom:1px solid var(--line);
+    flex-shrink:0; display:flex; align-items:center; gap:12px;
+  }
+  .back{
+    width:40px;height:40px;border-radius:50%;background:#F1F3F5;
+    display:flex;align-items:center;justify-content:center;
+    font-size:19px; cursor:pointer; flex-shrink:0; border:none;
+  }
+  .dname{ font-size:22px; font-weight:700; }
+  .dsub{ font-size:14px; color:var(--gray); }
+
+  .body{ flex:1; overflow-y:auto; padding:20px; padding-bottom:100px; }
+
+  .prog-wrap{ margin-bottom:22px; }
+  .prog-label{ display:flex; justify-content:space-between; font-size:15px; margin-bottom:8px; }
+  .prog-label b{ color:var(--green); }
+  .prog-bar{ height:12px; background:#EEF1F3; border-radius:8px; overflow:hidden; }
+  .prog-fill{ height:100%; background:var(--green); border-radius:8px; width:33%; }
+
+  .info-row{
+    display:flex; justify-content:space-between; padding:14px 0;
+    border-bottom:1px solid var(--line); font-size:16px;
+  }
+  .info-row .k{ color:var(--gray); }
+  .info-row .v{ font-weight:600; }
+  .info-row .v.hot{ color:var(--red); }
+
+  .sec-title{
+    font-size:15px; font-weight:700; color:var(--gray);
+    margin:26px 0 12px; letter-spacing:.5px;
+  }
+
+  /* 效果图 */
+  .photos{ display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; }
+  .ph{
+    width:96px; height:120px; border-radius:10px; flex-shrink:0;
+    background:linear-gradient(135deg,#E8EBED,#D8DDE1);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:13px; color:var(--gray); position:relative; overflow:hidden;
+  }
+  .ph.pick{ border:2.5px solid var(--green); background:linear-gradient(135deg,#E6F7F9,#D0EDF1); }
+  .ph .d{ position:absolute; bottom:6px; font-size:12px; }
+  .ph .em{ font-size:26px; }
+
+  .note{
+    background:#F7FAFB; border-left:3px solid var(--green);
+    padding:14px 16px; border-radius:0 10px 10px 0; font-size:16px;
+    color:#3A4249; line-height:1.7;
+  }
+
+  /* 底部固定操作条 */
+  .actionbar{
+    position:absolute; bottom:0; left:0; right:0;
+    background:#fff; border-top:1px solid var(--line);
+    padding:14px 16px 22px; display:flex; gap:10px;
+  }
+
+  /* 弹层 */
+  .sheet-mask{
+    position:fixed; inset:0; background:rgba(20,24,28,.45);
+    display:none; align-items:flex-end; justify-content:center; z-index:100;
+  }
+  .sheet-mask.on{ display:flex; }
+  .sheet{
+    width:100%; max-width:420px; background:#fff;
+    border-radius:22px 22px 0 0; padding:22px 20px 30px;
+    animation:up .24s ease-out;
+  }
+  @keyframes up{ from{ transform:translateY(100%);} to{ transform:translateY(0);} }
+  .sheet h3{ font-size:19px; margin-bottom:6px; }
+  .sheet .hint{ font-size:14px; color:var(--gray); margin-bottom:16px; }
+  .msgbox{
+    background:#F7FAFB; border:1.5px solid #DDEEF1; border-radius:12px;
+    padding:16px; font-size:17px; line-height:1.75; color:var(--ink);
+    white-space:pre-wrap; margin-bottom:18px;
+  }
+  .sheet-btns{ display:flex; gap:10px; }
+  .sheet-btns .btn{ height:52px; font-size:17px; }
+
+  /* 提示 */
+  .toast{
+    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.9);
+    background:rgba(26,29,33,.92); color:#fff; padding:16px 28px;
+    border-radius:14px; font-size:17px; font-weight:600;
+    opacity:0; pointer-events:none; transition:all .2s; z-index:200;
+  }
+  .toast.on{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+
+  .done-title{
+    text-align:center; padding:60px 20px; color:var(--gray); font-size:17px;
+  }
+  .done-title .em{ font-size:52px; display:block; margin-bottom:16px; }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- ========== 页面 1：今日待办 ========== -->
+  <div class="page active" id="pg-home">
+    <div class="statusbar"><span>9:41</span><span>●●● ⚡ ▮</span></div>
+    <div class="head">
+      <h1>今天</h1>
+      <span class="sub" id="todoCount">要联系 3 位</span>
+    </div>
+
+    <div class="list" id="todoList">
+      <!-- 卡片 1 -->
+      <div class="card urgent" data-id="1">
+        <div class="card-top">
+          <span class="dot r"></span>
+          <span class="cname">张姐</span>
+          <span class="ctag r">该来了</span>
+        </div>
+        <div class="card-line">该做第 4 次护理了</div>
+        <div class="card-meta">上次 9/9 ｜ 已隔 7 天</div>
+        <div class="btns">
+          <button class="btn btn-primary" onclick="openMsg(1,'张姐','该做第4次护理','上次是9/9做的，建议这几天来哦')">发消息</button>
+          <button class="btn btn-ghost" onclick="markDone(this,1)">已联系</button>
+        </div>
+      </div>
+
+      <!-- 卡片 2 -->
+      <div class="card" data-id="2">
+        <div class="card-top">
+          <span class="dot a"></span>
+          <span class="cname">李姐</span>
+          <span class="ctag">快结束</span>
+        </div>
+        <div class="card-line">疗程还剩 2 次</div>
+        <div class="card-meta">已完成 10/12 次 ｜ 效果不错</div>
+        <div class="btns">
+          <button class="btn btn-primary" onclick="openMsg(2,'李姐','疗程快结束了','这12次做下来效果挺好的，要不要看看对比图')">发消息</button>
+          <button class="btn btn-ghost" onclick="markDone(this,2)">已联系</button>
+        </div>
+      </div>
+
+      <!-- 卡片 3 -->
+      <div class="card" data-id="3">
+        <div class="card-top">
+          <span class="dot b"></span>
+          <span class="cname">王姐</span>
+          <span class="ctag">待跟进</span>
+        </div>
+        <div class="card-line">体验后 3 天没回复</div>
+        <div class="card-meta">8/29 到店体验 ｜ 未成交</div>
+        <div class="btns">
+          <button class="btn btn-primary" onclick="openMsg(3,'王姐','体验后跟进','上次您来体验感觉怎么样呀？我给您看几个和您情况差不多的对比')">发消息</button>
+          <button class="btn btn-ghost" onclick="markDone(this,3)">已联系</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 页面 2：客户卡片 ========== -->
+  <div class="page" id="pg-detail">
+    <div class="statusbar"><span>9:41</span><span>●●● ⚡ ▮</span></div>
+    <div class="detail-head">
+      <button class="back" onclick="go('pg-home')">←</button>
+      <div>
+        <div class="dname">张姐</div>
+        <div class="dsub">疗程A · 白发转黑</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="prog-wrap">
+        <div class="prog-label"><span>疗程进度</span><span><b>4</b> / 12 次</span></div>
+        <div class="prog-bar"><div class="prog-fill"></div></div>
+      </div>
+
+      <div class="info-row"><span class="k">上次到店</span><span class="v">9月9日</span></div>
+      <div class="info-row"><span class="k">下次该来</span><span class="v hot">今天</span></div>
+      <div class="info-row"><span class="k">已隔</span><span class="v">7 天</span></div>
+      <div class="info-row"><span class="k">预计完成</span><span class="v">11月20日</span></div>
+
+      <div class="sec-title">效果记录 <span style="font-weight:400;color:#B0B6BC;font-size:13px;margin-left:6px;">点击对比</span></div>
+      <div class="photos" id="photoRow">
+        <div class="ph" onclick="pickPhoto(0)"><span class="em">📷</span><span class="d">8/15</span></div>
+        <div class="ph" onclick="pickPhoto(1)"><span class="em">📷</span><span class="d">9/1</span></div>
+        <div class="ph" onclick="pickPhoto(2)"><span class="em">📷</span><span class="d">9/9</span></div>
+        <div class="ph" onclick="toast('拍照已记录')"><span class="em">＋</span></div>
+      </div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:12px;" onclick="openCompare()">📊 生成对比图给客户看</button>
+
+      <div class="sec-title">上次聊到</div>
+      <div class="note">女儿下个月结婚，想拍好看点</div>
+    </div>
+
+    <div class="actionbar">
+      <button class="btn btn-primary" onclick="openMsg(1,'张姐','该做第4次护理','上次是9/9做的，建议这几天来哦')">发消息</button>
+      <button class="btn btn-ghost" onclick="go('pg-home');toast('已记录到店')">记录到店</button>
+    </div>
+  </div>
+
+  <!-- ========== 页面 3：其他（占位） ========== -->
+  <div class="page" id="pg-list">
+    <div class="statusbar"><span>9:41</span><span>●●● ⚡ ▮</span></div>
+    <div class="head"><h1>客户</h1><span class="sub">共 87 位</span></div>
+    <div class="list">
+      <div class="card" onclick="go('pg-detail')" style="cursor:pointer">
+        <div class="card-top"><span class="dot r"></span><span class="cname">张姐</span><span class="ctag">4/12</span></div>
+        <div class="card-meta">今天该来</div>
+      </div>
+      <div class="card" onclick="toast('原型只做了张姐的详情')">
+        <div class="card-top"><span class="dot a"></span><span class="cname">李姐</span><span class="ctag">10/12</span></div>
+        <div class="card-meta">还剩 2 次</div>
+      </div>
+      <div class="card" onclick="toast('原型只做了张姐的详情')">
+        <div class="card-top"><span class="dot b"></span><span class="cname">王姐</span><span class="ctag">未成交</span></div>
+        <div class="card-meta">体验后待跟进</div>
+      </div>
+      <div class="card" onclick="toast('原型只做了 3 个客户')">
+        <div class="card-top"><span class="dot b"></span><span class="cname">刘姐</span><span class="ctag">8/12</span></div>
+        <div class="card-meta">9/12 到店</div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tab" onclick="go('pg-home')"><span class="ic">☑</span>今天</div>
+      <div class="tab on"><span class="ic">☰</span>客户</div>
+      <div class="tab" onclick="toast('暂未开放')"><span class="ic">⚙</span>设置</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 发消息弹层 -->
+<div class="sheet-mask" id="mask">
+  <div class="sheet">
+    <h3 id="shTitle">发给张姐</h3>
+    <div class="hint">内容可以改，也可以直接发</div>
+    <div class="msgbox" id="shMsg"></div>
+    <div class="sheet-btns">
+      <button class="btn btn-ghost" onclick="toast('原型：不做编辑')">改一改</button>
+      <button class="btn btn-primary" onclick="doSend()">直接发送</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 对比图弹层 -->
+<div class="sheet-mask" id="cmpMask">
+  <div class="sheet">
+    <h3>效果对比 · 张姐</h3>
+    <div class="hint">8月15日 首次 → 9月9日 第4次</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+      <div style="flex:1;text-align:center;">
+        <div style="aspect-ratio:3/4;border-radius:12px;background:linear-gradient(160deg,#DDE2E6,#C8CFD5);display:flex;align-items:center;justify-content:center;font-size:34px;">📷</div>
+        <div style="font-size:14px;color:#8B9198;margin-top:8px;">8月15日</div>
+        <div style="font-size:13px;color:#B0B6BC;">白发较多</div>
+      </div>
+      <div style="font-size:22px;color:#00A0B4;font-weight:700;">→</div>
+      <div style="flex:1;text-align:center;">
+        <div style="aspect-ratio:3/4;border-radius:12px;background:linear-gradient(160deg,#E6F7F9,#B8E4EA);display:flex;align-items:center;justify-content:center;font-size:34px;">📷</div>
+        <div style="font-size:14px;color:#00A0B4;margin-top:8px;font-weight:600;">9月9日</div>
+        <div style="font-size:13px;color:#00A0B4;">明显转黑</div>
+      </div>
+    </div>
+    <div style="background:#F7FAFB;border-radius:10px;padding:12px 14px;font-size:15px;color:#4A5158;line-height:1.7;margin-bottom:18px;">
+      💡 发给客户时附一句：您看，才 4 次就有变化了，坚持做完效果会更好～
+    </div>
+    <div class="sheet-btns">
+      <button class="btn btn-ghost" onclick="closeCmp()">关闭</button>
+      <button class="btn btn-primary" onclick="closeCmp();toast('对比图已发送 ✓')">发给张姐</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- 页面切换 ---------- */
+function go(id){
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+/* ---------- 提示 ---------- */
+var tmr;
+function toast(txt){
+  var t=document.getElementById('toast');
+  t.textContent=txt; t.classList.add('on');
+  clearTimeout(tmr);
+  tmr=setTimeout(function(){ t.classList.remove('on'); },1600);
+}
+
+/* ---------- 发消息 ---------- */
+var curId=null, curCard=null;
+function openMsg(id,name,subject,detail){
+  curId=id;
+  curCard=document.querySelector('.card[data-id="'+id+'"]');
+  document.getElementById('shTitle').textContent='发给 '+name;
+  document.getElementById('shMsg').textContent =
+    name+'好~ 您的疗程'+subject+'啦，'+detail+'。\n您看明天下午方便吗？🙂';
+  document.getElementById('mask').classList.add('on');
+}
+
+function doSend(){
+  document.getElementById('mask').classList.remove('on');
+  if(curCard){ markDone(null,curId,true); }
+  toast('消息已发送 ✓');
+}
+
+/* ---------- 标记已联系 ---------- */
+function markDone(btn,id,silent){
+  var card=document.querySelector('.card[data-id="'+id+'"]');
+  if(card){ card.classList.add('done'); }
+  var left=document.querySelectorAll('#todoList .card:not(.done)').length;
+  var el=document.getElementById('todoCount');
+  el.textContent = left>0 ? ('要联系 '+left+' 位') : '今天都联系完了';
+  if(left===0){
+    var l=document.getElementById('todoList');
+    setTimeout(function(){
+      l.innerHTML='<div class="done-title"><span class="em">🎉</span>今天的联系都做完了<br>休息一下吧</div>';
+    },400);
+  }
+}
+
+/* ---------- 对比图 ---------- */
+function openCompare(){
+  document.getElementById('cmpMask').classList.add('on');
+}
+function closeCmp(){
+  document.getElementById('cmpMask').classList.remove('on');
+}
+function pickPhoto(i){
+  document.querySelectorAll('#photoRow .ph').forEach(function(p){ p.classList.remove('pick'); });
+  document.querySelectorAll('#photoRow .ph')[i].classList.add('pick');
+}
+
+/* ---------- 底部 tab ---------- */
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on');});
+    t.classList.add('on');
+  });
+});
+</script>
+</body>
+</html>
