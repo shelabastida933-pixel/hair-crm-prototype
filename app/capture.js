@@ -7,15 +7,18 @@
 /**
  * 调起手机相机/相册，返回压缩后的 Blob
  *
- * ⚠️ 关键坑（真机实测踩过）：
- *   `input.style.display='none'` 在 iOS Safari / 微信内置浏览器里
- *   会被判为「非用户手势」→ 静默失败，什么都不弹。
- *   正确做法：页面里常驻一个 <input>，用 opacity:0 + 绝对定位盖在按钮上，
- *   让用户点到的是「真实可见的 input」，各端都能正常弹相机。
+ * ⚠️ 两个真机踩过的坑：
+ *  1) `input.style.display='none'` 在 iOS Safari / 微信内置浏览器里
+ *     会被判为「非用户手势」→ 静默失败，什么都不弹。
+ *     正确做法：页面里常驻一个 <input>，用 opacity:0.01 让它「可见但透明」。
+ *  2) input 常驻复用 → `capture` 属性会残留！
+ *     点过「用相机拍」之后，再点「从相册选」仍然会直接开相机。
+ *     **每次调用都必须明确 set 或 removeAttribute('capture')。**
  */
 function capturePhoto(opt = {}) {
   const maxSize = opt.maxSize || 1400;
   const quality = opt.quality || 0.86;
+  const forceCamera = !!opt.forceCamera;
 
   return new Promise((resolve, reject) => {
     let input = document.getElementById('_camInput');
@@ -24,8 +27,6 @@ function capturePhoto(opt = {}) {
       input.id = '_camInput';
       input.type = 'file';
       input.accept = 'image/*';
-      // capture 只在需要「强制开相机」时用；不设则让用户自己选相机/相册
-      if (opt.forceCamera) input.setAttribute('capture', 'environment');
       // 关键：不用 display:none，用「可见但透明」
       Object.assign(input.style, {
         position: 'fixed',
@@ -40,11 +41,21 @@ function capturePhoto(opt = {}) {
       document.body.appendChild(input);
     }
 
+    /* ⭐ 每次都重置 capture —— 消除上次调用残留
+       这是关键：input 常驻复用，capture 属性不会自己消失。
+       点过「用相机拍」之后再点「从相册选」，若不 removeAttribute
+       手机上仍会直接开相机（或表现异常）。 */
+    input.removeAttribute('capture');
+    if (forceCamera) {
+      input.setAttribute('capture', 'environment');
+    }
+    input.accept = 'image/*';
+
     let done = false;
     const handler = async () => {
       if (done) return;
       const file = input.files && input.files[0];
-      if (!file) return;             // 用户取消，不 reject（等 focus 兜底）
+      if (!file) return;             // 用户取消
       done = true;
       cleanup();
       try {
