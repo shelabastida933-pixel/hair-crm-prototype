@@ -212,17 +212,60 @@ async function openDetail(id) {
 async function takePhotoFlow(custId) {
   const c = await Store.customer(custId);
   if (!c) return;
+  await pickAndSave(custId);
+}
+
+/** 弹选择：拍照 or 相册 */
+function pickAndSave(custId) {
+  return new Promise((resolve) => {
+    const isWX = /MicroMessenger/i.test(navigator.userAgent);
+    const isHttps = location.protocol === 'https:';
+    const mask = document.createElement('div');
+    mask.className = 'sheet-mask on';
+    mask.innerHTML = `
+      <div class="sheet">
+        <h3>添加照片</h3>
+        <div class="hint">${isWX ? '微信里建议用「从相册选」，最稳' : '两种方式都可以'}</div>
+        <button class="btn btn-primary w100 btn-big" id="_pk_cam">📷 用相机拍一张</button>
+        <button class="btn btn-ghost w100 btn-big" style="margin-top:10px" id="_pk_alb">🖼 从相册选</button>
+        <button class="btn btn-ghost w100" style="margin-top:10px" id="_pk_cancel">取消</button>
+        ${isHttps ? '' : '<div class="warn-box" style="margin-top:14px">当前不是 HTTPS，相机可能打不开。请用「从相册选」，或换 https 地址打开。</div>'}
+      </div>`;
+    document.body.appendChild(mask);
+    const close = () => { mask.remove(); resolve(); };
+    mask.onclick = (e) => { if (e.target === mask) close(); };
+    mask.querySelector('#_pk_cancel').onclick = close;
+
+    mask.querySelector('#_pk_alb').onclick = async () => {
+      mask.remove();
+      await doCapture(custId, false);
+      resolve();
+    };
+    mask.querySelector('#_pk_cam').onclick = async () => {
+      mask.remove();
+      await doCapture(custId, true);
+      resolve();
+    };
+  });
+}
+
+async function doCapture(custId, forceCamera) {
   try {
-    toast('打开相机…');
-    const blob = await capturePhoto();
+    toast(forceCamera ? '正在打开相机…' : '正在打开相册…');
+    const blob = await capturePhoto({ forceCamera });
+    if (!blob) throw new Error('empty');
     await Store.addPhoto(custId, blob, '');
-    // 拍完默认算到店一次
     toast('照片已保存 ✓');
     if (S.page === 'pg-detail') await openDetail(custId);
     else await renderCustomers();
   } catch (e) {
-    if (e && e.message === 'cancel') return;
-    toast('没拍到照片');
+    // 明确报错，不静默
+    alert('没能拿到照片。\n\n' +
+      '可以试这几步：\n' +
+      '1. 换「从相册选」再试一次\n' +
+      '2. 如果是微信里打开的，点右上角「⋯」→「在浏览器打开」\n' +
+      '3. 长按这个页面链接，用系统浏览器打开\n\n' +
+      '错误信息：' + (e && e.message ? e.message : e));
   }
 }
 
@@ -422,6 +465,56 @@ async function renderStats() {
 }
 async function saveShop(v) { await Store.setSetting('shop', v.trim()); }
 async function savePhone(v) { await Store.setSetting('phone', v.trim()); }
+
+/** 设置页：环境自检 —— 人话版，给 40-55 岁的人看 */
+async function runDiag() {
+  const d = await diagnoseCamera();
+  const box = document.getElementById('diagBox');
+
+  // 结论先行：一句话说清能不能用
+  let head, advice;
+  if (!d.https) {
+    head = '❌ 拍照可能打不开';
+    advice = '这个页面的打开方式不支持调相机。\n\n' +
+             '怎么办：\n' +
+             '① 先用「从相册选」——这个一定能用\n' +
+             '② 或者找我要个 https 的地址';
+  } else if (d.isWX && d.isIOS) {
+    head = '⚠️ 在微信里，相机可能被限制';
+    advice = '怎么办（按顺序试）：\n' +
+             '① 优先用「从相册选」\n' +
+             '② 点微信右上角 ⋯ → 「在浏览器打开」\n' +
+             '③ 在浏览器里就能正常调相机了';
+  } else if (d.isWX) {
+    head = '⚠️ 在微信里建议用「从相册选」';
+    advice = '相机被拦的话：\n' +
+             '点右上角 ⋯ → 「在浏览器打开」';
+  } else if (!d.isIOS && !d.isAndroid) {
+    head = '💻 你现在在电脑上';
+    advice = '电脑上不会真开相机，会弹文件选择器。\n要在手机上试。';
+  } else {
+    head = '✅ 环境正常，可以用相机';
+    advice = '点「试拍一张」验证一下。';
+  }
+
+  // 技术细节折叠起来，不吓人
+  box.innerHTML = `<b style="font-size:17px">${head}</b>\n\n${advice}\n\n` +
+    `<details style="margin-top:10px"><summary style="color:#8B9198;font-size:14px;cursor:pointer">查看详细信息</summary>` +
+    `<div style="color:#8B9198;font-size:14px;margin-top:8px;white-space:pre-line">${d.lines}</div></details>`;
+}
+
+/** 设置页：试拍（不写库） */
+async function testShoot() {
+  try {
+    const blob = await capturePhoto({ forceCamera: false });
+    document.getElementById('diagBox').textContent =
+      `✅ 成功拿到照片！\n尺寸：${(blob.size / 1024).toFixed(0)} KB\n\n说明这条路是通的。`;
+  } catch (e) {
+    document.getElementById('diagBox').textContent =
+      `❌ 没拿到照片\n错误：${e && e.message ? e.message : e}\n\n` +
+      `换「从相册选」再试，或用系统浏览器打开。`;
+  }
+}
 
 async function exportData() {
   try {

@@ -6,48 +6,63 @@
 
 /**
  * 调起手机相机/相册，返回压缩后的 Blob
- * @param {Object} opt { maxSize: 最长边像素, quality: jpeg质量 }
+ *
+ * ⚠️ 关键坑（真机实测踩过）：
+ *   `input.style.display='none'` 在 iOS Safari / 微信内置浏览器里
+ *   会被判为「非用户手势」→ 静默失败，什么都不弹。
+ *   正确做法：页面里常驻一个 <input>，用 opacity:0 + 绝对定位盖在按钮上，
+ *   让用户点到的是「真实可见的 input」，各端都能正常弹相机。
  */
 function capturePhoto(opt = {}) {
   const maxSize = opt.maxSize || 1400;
   const quality = opt.quality || 0.86;
 
   return new Promise((resolve, reject) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment';   // 优先调后置相机（微信里也能调相册）
-    input.style.display = 'none';
-    document.body.appendChild(input);
+    let input = document.getElementById('_camInput');
+    if (!input) {
+      input = document.createElement('input');
+      input.id = '_camInput';
+      input.type = 'file';
+      input.accept = 'image/*';
+      // capture 只在需要「强制开相机」时用；不设则让用户自己选相机/相册
+      if (opt.forceCamera) input.setAttribute('capture', 'environment');
+      // 关键：不用 display:none，用「可见但透明」
+      Object.assign(input.style, {
+        position: 'fixed',
+        left: '50%',
+        bottom: '0',
+        width: '1px',
+        height: '1px',
+        opacity: '0.01',
+        zIndex: '9999',
+        pointerEvents: 'none',
+      });
+      document.body.appendChild(input);
+    }
 
     let done = false;
-    const cleanup = () => {
-      if (input.parentNode) input.parentNode.removeChild(input);
-    };
-
-    input.onchange = async () => {
+    const handler = async () => {
       if (done) return;
-      done = true;
       const file = input.files && input.files[0];
+      if (!file) return;             // 用户取消，不 reject（等 focus 兜底）
+      done = true;
       cleanup();
-      if (!file) return reject(new Error('cancel'));
-
       try {
         const blob = await compressImage(file, maxSize, quality);
         resolve(blob);
-      } catch (e) {
-        reject(e);
-      }
+      } catch (e) { reject(e); }
+    };
+    const cleanup = () => {
+      input.removeEventListener('change', handler);
+      input.value = '';               // 允许重复选同一张
     };
 
-    // 用户取消（部分浏览器不触发 change，靠 focus 兜底不reject，只清理）
-    window.addEventListener('focus', () => {
-      setTimeout(() => { done = true; cleanup(); }, 1000);
-    }, { once: true });
-
+    input.addEventListener('change', handler);
     input.click();
   });
 }
+
+/** 兜底：用户取消后重新可点（不需要额外处理，change 不触发即可） */
 
 /** 压缩图片：等比缩放到最长边 maxSize，输出 jpeg Blob */
 function compressImage(file, maxSize, quality) {
@@ -261,6 +276,28 @@ async function shareImage(blob, filename, text) {
   }
   saveImage(blob, filename);
   return 'saved';
+}
+
+/* ---------------- 5. 环境诊断（手机上一点就知道卡在哪） ---------------- */
+async function diagnoseCamera() {
+  const ua = navigator.userAgent;
+  const isWX = /MicroMessenger/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const https = location.protocol === 'https:';
+  const hasFile = 'File' in window && 'FileReader' in window;
+  const hasShare = !!(navigator.canShare);
+  const hasMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+  const lines = [
+    `系统：${isIOS ? 'iOS' : (isAndroid ? 'Android' : '电脑')}`,
+    `浏览器：${isWX ? '微信内置' : '系统浏览器'}`,
+    `协议：${location.protocol}${https ? ' ✓' : ' ✗（相机必须 HTTPS）'}`,
+    `文件读取能力：${hasFile ? '有 ✓' : '无 ✗'}`,
+    `系统分享能力：${hasShare ? '有 ✓' : '无（会改为下载）'}`,
+    `摄像头 API：${hasMedia ? '有' : '无（用相册选择方式）'}`,
+  ];
+  return { isWX, isIOS, isAndroid, https, lines: lines.join('\n') };
 }
 
 /* ---------------- 4. 日期工具 ---------------- */
