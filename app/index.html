@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FFFFFF">
+<title>发丝管家</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- ============ 首页：今日待办 ============ -->
+  <section class="page active" id="pg-home">
+    <div class="head">
+      <h1>今天</h1>
+      <span class="sub" id="todoCount">…</span>
+    </div>
+    <div class="list" id="todoList"></div>
+  </section>
+
+  <!-- ============ 客户列表 ============ -->
+  <section class="page" id="pg-customers">
+    <div class="head">
+      <h1>客户</h1>
+      <button class="head-add" onclick="newCustomer()">＋ 加客户</button>
+    </div>
+    <div class="list" id="custList"></div>
+  </section>
+
+  <!-- ============ 客户详情 ============ -->
+  <section class="page" id="pg-detail">
+    <div class="detail-head">
+      <button class="back" onclick="back()">←</button>
+      <div class="dh-txt">
+        <div class="dname" id="dName">—</div>
+        <div class="dsub" id="dSub">—</div>
+      </div>
+      <button class="back" style="margin-left:auto" onclick="editCustomer()">✎</button>
+    </div>
+    <div class="body" id="dBody"></div>
+  </section>
+
+  <!-- ============ 设置 ============ -->
+  <section class="page" id="pg-settings">
+    <div class="head"><h1>设置</h1></div>
+    <div class="body">
+      <div class="sec-title">店铺信息</div>
+      <label class="field">
+        <span>店名（会印在分享图上）</span>
+        <input id="setShop" placeholder="例如：张姐养发馆" oninput="saveShop(this.value)">
+      </label>
+      <label class="field">
+        <span>电话</span>
+        <input id="setPhone" type="tel" placeholder="选填" oninput="savePhone(this.value)">
+      </label>
+
+      <div class="sec-title">数据</div>
+      <div class="stat-box" id="statBox">…</div>
+      <button class="btn btn-ghost w100" style="margin-top:12px" onclick="exportData()">⬇ 导出备份（换手机用）</button>
+      <button class="btn btn-ghost w100" style="margin-top:10px" onclick="document.getElementById('impFile').click()">⬆ 导入备份</button>
+      <input type="file" id="impFile" accept=".json" style="display:none" onchange="importData(this)">
+
+      <div class="warn-box" style="margin-top:22px">
+        <b>数据存在这台手机上</b><br>
+        换手机或清理浏览器数据会丢失。重要数据请定期导出备份。
+      </div>
+
+      <button class="btn btn-danger w100" style="margin-top:26px" onclick="clearAll()">清空全部数据</button>
+    </div>
+  </section>
+
+  <!-- 底部 tab -->
+  <nav class="tabbar" id="tabbar">
+    <div class="tab on" data-pg="pg-home" onclick="go('pg-home')"><span class="ic">☑</span>今天</div>
+    <div class="tab" data-pg="pg-customers" onclick="go('pg-customers')"><span class="ic">☰</span>客户</div>
+    <div class="tab" data-pg="pg-settings" onclick="go('pg-settings')"><span class="ic">⚙</span>设置</div>
+  </nav>
+</div>
+
+<!-- ============ 弹层：发消息 ============ -->
+<div class="sheet-mask" id="msgMask" onclick="if(event.target===this)closeMsg()">
+  <div class="sheet">
+    <h3 id="msgTitle">发消息</h3>
+    <div class="hint">内容可以改，也可以直接发</div>
+    <textarea class="msgbox" id="msgBox" rows="5"></textarea>
+    <div class="sheet-btns">
+      <button class="btn btn-ghost" onclick="closeMsg()">取消</button>
+      <button class="btn btn-primary" onclick="copyMsg()">复制文案</button>
+    </div>
+    <button class="btn btn-primary w100" style="margin-top:10px;height:52px" onclick="sendMsg()">我已发出，标记已联系</button>
+  </div>
+</div>
+
+<!-- ============ 弹层：对比图 ============ -->
+<div class="sheet-mask" id="cmpMask" onclick="if(event.target===this)closeCmp()">
+  <div class="sheet">
+    <h3 id="cmpTitle">效果对比</h3>
+    <div class="hint" id="cmpHint"></div>
+    <div class="cmp-preview" id="cmpPreview">
+      <div class="cmp-loading">正在生成对比图…</div>
+    </div>
+    <div class="sheet-btns" style="margin-top:16px">
+      <button class="btn btn-ghost" onclick="closeCmp()">关闭</button>
+      <button class="btn btn-primary" id="cmpShareBtn" onclick="doShareCmp()">发给客户</button>
+    </div>
+    <button class="btn btn-ghost w100" style="margin-top:10px" onclick="doSaveCmp()">存到相册</button>
+  </div>
+</div>
+
+<!-- ============ 弹层：编辑客户 ============ -->
+<div class="sheet-mask" id="editMask" onclick="if(event.target===this)closeEdit()">
+  <div class="sheet">
+    <h3 id="editTitle">加客户</h3>
+    <label class="field"><span>姓名</span><input id="fName" placeholder="如：张姐"></label>
+    <label class="field"><span>项目</span><input id="fProj" placeholder="如：白发转黑 · 疗程A"></label>
+    <div class="row2">
+      <label class="field"><span>总次数</span><input id="fTotal" type="number" min="1" value="12"></label>
+      <label class="field"><span>已完成</span><input id="fDone" type="number" min="0" value="0"></label>
+    </div>
+    <label class="field"><span>间隔天数</span><input id="fGap" type="number" min="1" value="6"></label>
+    <label class="field"><span>上次到店</span><input id="fLast" type="date"></label>
+    <label class="field"><span>备注</span><input id="fNote" placeholder="如：女儿下月结婚"></label>
+    <div class="sheet-btns" style="margin-top:6px">
+      <button class="btn btn-ghost" onclick="closeEdit()">取消</button>
+      <button class="btn btn-primary" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 弹层：看大图 ============ -->
+<div class="viewer" id="viewer" onclick="closeViewer()">
+  <img id="viewerImg" alt="">
+  <div class="viewer-btns" onclick="event.stopPropagation()">
+    <button class="btn btn-primary" id="viewerShare">分享这张</button>
+    <button class="btn btn-ghost" onclick="closeViewer()">关闭</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="db.js"></script>
+<script src="capture.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
