@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>发丝管家 · 预约原型演示</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--ink:#1C1E26;--gray:#8B9198;--line:#E8EBED;--bg:#F4F6F7;--brand:#00A0B4;--brand-l:#E6F7F9;
+      --red:#E5484D;--amber:#F5A623;--green:#12A150}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 20px 60px}
+
+h1{font-size:26px;margin-bottom:6px}
+.sub{color:var(--gray);font-size:14px;margin-bottom:24px}
+
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:18px}
+.panel h2{font-size:17px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.panel h2 .n{background:var(--brand);color:#fff;width:24px;height:24px;border-radius:50%;font-size:13px;display:flex;align-items:center;justify-content:center;flex:0 0 24px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.col{flex:1;min-width:300px}
+
+/* 配置区 */
+.cfg{display:flex;gap:20px;flex-wrap:wrap;align-items:center;background:#F7FAFB;border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.cfg label{font-size:14px;color:#4A5158;display:flex;align-items:center;gap:8px;cursor:pointer}
+.cfg input[type=number]{width:64px;height:34px;border:1px solid var(--line);border-radius:8px;padding:0 8px;font-family:inherit;font-size:15px;text-align:center}
+.cfg input[type=checkbox]{width:20px;height:20px;accent-color:var(--brand);cursor:pointer}
+.badge{font-size:12px;padding:2px 8px;border-radius:20px;background:#EEF1F3;color:var(--gray)}
+
+/* 时段表 */
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.slot{border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;transition:.12s;background:#fff;position:relative}
+.slot:hover{border-color:var(--brand)}
+.slot.full{background:#FAFBFC;border-color:#EDF0F2;cursor:not-allowed;opacity:.65}
+.slot.sel{border-color:var(--brand);border-width:2.5px;background:var(--brand-l)}
+.slot .t{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.slot .cap{font-size:12.5px;color:var(--gray);margin-top:3px}
+.slot .bar{height:5px;border-radius:3px;background:#EEF1F3;margin-top:7px;overflow:hidden}
+.slot .bar i{display:block;height:100%;background:var(--brand);border-radius:3px}
+.slot.full .bar i{background:#C9CDD1}
+.slot .why{font-size:11.5px;color:var(--red);margin-top:4px}
+
+/* 员工卡片 */
+.staff{display:flex;gap:10px;flex-wrap:wrap}
+.staff .card{border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;min-width:150px;cursor:pointer}
+.staff .card.on{border-color:var(--brand);background:var(--brand-l)}
+.staff .card .nm{font-weight:700;font-size:15px}
+.staff .card .sk{font-size:12px;color:var(--gray);margin-top:2px}
+.staff .card .seg{font-size:12px;color:#4A5158;margin-top:4px}
+
+/* 结果 */
+.result{margin-top:16px;border-radius:12px;padding:16px 18px;font-size:15px;line-height:1.8}
+.result.ok{background:#ECFAF2;border-left:4px solid var(--green)}
+.result.no{background:#FDECEC;border-left:4px solid var(--red)}
+.result .big{font-size:20px;font-weight:700;margin-bottom:8px}
+.result code{background:#0000000d;padding:2px 6px;border-radius:4px;font-size:13.5px}
+
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th{color:var(--gray);font-weight:600;font-size:13px}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+
+.note{background:#FFFBF2;border-left:3px solid var(--amber);padding:12px 14px;border-radius:0 8px 8px 0;font-size:13.5px;color:#7A6220;margin-top:14px}
+.hint{font-size:13px;color:var(--gray);margin-bottom:12px}
+button.act{height:44px;padding:0 20px;border-radius:10px;border:none;background:var(--brand);color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer}
+button.act:disabled{background:#C9CDD1;cursor:not-allowed}
+button.ghost{background:#F1F3F5;color:#4A5158}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>发丝管家 · 预约算法演示</h1>
+  <div class="sub">点着看「可约时段」是怎么算出来的 —— 30 分钟粒度 / 员工在岗 / 床位容量 / 跨格锁位</div>
+
+  <!-- 1. 店铺配置 -->
+  <div class="panel">
+    <h2><span class="n">1</span>店铺服务能力</h2>
+    <div class="cfg">
+      <label>床位数 <input type="number" id="beds" value="3" min="1" max="20" onchange="refresh()"></label>
+      <label><input type="checkbox" id="pick" onchange="refresh()"> 允许客户指定员工 <span class="badge">默认关闭</span></label>
+      <span class="badge">营业 09:00 – 18:00</span>
+      <span class="badge">粒度 30 分钟</span>
+    </div>
+    <div class="staff" id="staffBox"></div>
+  </div>
+
+  <!-- 2. 选服务 -->
+  <div class="panel">
+    <h2><span class="n">2</span>选服务（时长决定锁几个格子）</h2>
+    <div class="staff" id="svcBox"></div>
+    <div class="hint" style="margin-top:12px" id="svcHint"></div>
+  </div>
+
+  <!-- 3. 时段 -->
+  <div class="panel">
+    <h2><span class="n">3</span>可约时段（点一个试试）</h2>
+    <div class="hint">每个格子的数字 = 剩余可约人数。灰色 = 约满或无人可做。</div>
+    <div class="slots" id="slotBox"></div>
+    <div id="resultBox"></div>
+  </div>
+
+  <!-- 4. 算法说明 -->
+  <div class="panel">
+    <h2><span class="n">4</span>背后在算什么</h2>
+    <table id="calcTable">
+      <thead><tr><th>槽位</th><th class="num">在岗员工</th><th class="num">床位</th><th class="num">容量</th><th class="num">已约</th><th class="num">剩余</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="note">
+      <b>容量 = min(在岗员工数, 床位数)</b><br>
+      3 张床但只有 2 个技师在岗 → 只能接 2 人。只按床位算会超卖，客户到店没人做。
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:0">
+    <b>这个演示在验证什么：</b>算法逻辑（不是界面）。真实产品里这些数据来自云端数据库，
+    这张表会换成「未来 30 天预生成的容量表」，预约时做原子的 <code>remaining--</code> 防超卖。
+  </div>
+</div>
+
+<script src="booking.js"></script>
+<script>
+let selSlot = null;
+let selSvc = 'v1';
+let selStaff = null;
+let lastCalc = null;
+
+/* 初始化员工/服务展示 */
+function renderStaff() {
+  document.getElementById('staffBox').innerHTML = DEMO.staff.map(s => `
+    <div class="card" data-sid="${s.id}">
+      <div class="nm">${s.name}</div>
+      <div class="sk">会做：${s.skills.join(' / ')}</div>
+      <div class="seg">${s.segments.map(x => x.join('–')).join('　')}</div>
+    </div>`).join('');
+}
+
+function renderSvc() {
+  document.getElementById('svcBox').innerHTML = DEMO.services.map(s => `
+    <div class="card ${s.id === selSvc ? 'on' : ''}" onclick="pickSvc('${s.id}')">
+      <div class="nm">${s.name}</div>
+      <div class="sk">${s.durationMin} 分钟 · 锁 ${Math.ceil(s.durationMin / SLOT)} 格</div>
+    </div>`).join('');
+
+  const svc = DEMO.services.find(s => s.id === selSvc);
+  const elig = eligibleStaff(selSvc);
+  document.getElementById('svcHint').innerHTML =
+    `「${svc.name}」需要 ${svc.durationMin} 分钟，会连续锁 <b>${Math.ceil(svc.durationMin/SLOT)}</b> 个 30 分钟格子。` +
+    `会做这个项目的员工：<b>${elig.map(s=>s.name).join('、') || '无'}</b>`;
+}
+
+function pickSvc(id) { selSvc = id; selSlot = null; renderSvc(); renderSlots(); document.getElementById('resultBox').innerHTML = ''; }
+
+function refresh() {
+  DEMO.shop.bedCount = parseInt(document.getElementById('beds').value) || 3;
+  DEMO.shop.allowCustomerPickStaff = document.getElementById('pick').checked;
+  selSlot = null;
+  renderStaff(); renderSvc(); renderSlots();
+  document.getElementById('resultBox').innerHTML = '';
+}
+
+function renderSlots() {
+  const slots = allSlots();
+  document.getElementById('slotBox').innerHTML = slots.map(s => {
+    const st = slotStatus(s, selSvc);
+    const full = st.remaining <= 0;
+    const pct = st.capacity ? Math.round((st.booked / st.capacity) * 100) : 100;
+    const cls = ['slot'];
+    if (full) cls.push('full');
+    if (selSlot === s) cls.push('sel');
+    let why = '';
+    if (st.onDuty === 0) why = '无人上班';
+    else if (full) why = '已约满';
+    return `<div class="${cls.join(' ')}" data-slot="${s}" onclick="pickSlot('${s}')">
+      <div class="t">${s}</div>
+      <div class="cap">${st.onDuty===0 ? '无人上班' : `剩 ${st.remaining} 人 · ${st.booked}/${st.capacity}`}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      ${why ? `<div class="why">${why}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // 计算表
+  document.querySelector('#calcTable tbody').innerHTML = slots.map(s => {
+    const st = slotStatus(s, selSvc);
+    return `<tr>
+      <td><b>${s}</b></td>
+      <td class="num">${st.onDuty}</td>
+      <td class="num">${st.beds}</td>
+      <td class="num">${st.capacity}</td>
+      <td class="num">${st.booked}</td>
+      <td class="num" style="color:${st.remaining>0?'var(--green)':'var(--red)'}"><b>${st.remaining}</b></td>
+    </tr>`;
+  }).join('');
+}
+
+function pickSlot(slot) {
+  selSlot = slot;
+
+  // ★ 先算好结果，再一次性渲染，避免「重建列表后又渲染结果」的节点竞态
+  const svc = DEMO.services.find(s => s.id === selSvc);
+  const r = canBookRange(slot, svc.durationMin, null, selSvc);
+
+  let html = '';
+  if (r.ok) {
+    html = `<div class="result ok">
+      <div class="big">✓ 可以约</div>
+      <b>${slot}</b> 起，做「${svc.name}」（${svc.durationMin} 分钟）<br>
+      会占用格子：<code>${r.slots.join(' → ')}</code><br>
+      校验过程：<br>
+      ${r.each.map(e => `　· ${e.slot}　在岗 ${e.onDuty} 人 / 床位 ${e.beds} → 容量 ${e.capacity}，已约 ${e.booked}，<b>剩 ${e.remaining}</b>`).join('<br>')}
+      <div style="margin-top:12px">
+        ${DEMO.shop.allowCustomerPickStaff
+          ? `<button class="act" onclick="showPickStaff()">下一步：选技师（已开启）</button>`
+          : `<button class="act" disabled>客户不能选技师（开关关闭）</button>
+             <div style="font-size:13px;color:#8B9198;margin-top:8px">→ 预约单进入「待店长分配」，店长在后台指定技师</div>`}
+      </div>
+    </div>`;
+  } else {
+    html = `<div class="result no">
+      <div class="big">✗ 不能约</div>
+      原因：<b>${r.reason || '时段不可约'}</b><br>
+      ${r.reason === '超出营业时间'
+        ? `营业到 ${DEMO.shop.businessHours.close}，${slot} 起做 ${svc.durationMin} 分钟会超出。`
+        : (r.each || []).map(e => `　· ${e.slot}　剩 ${e.remaining} 人`).join('<br>')}
+    </div>`;
+  }
+
+  // 一次性：更新选中态 + 渲染结果（不重建整个列表）
+  document.querySelectorAll('#slotBox .slot').forEach(el => {
+    el.classList.toggle('sel', el.dataset.slot === slot);
+  });
+  document.getElementById('resultBox').innerHTML = html;
+}
+
+function showPickStaff() {
+  const svc = DEMO.services.find(s => s.id === selSvc);
+  const elig = eligibleStaff(selSvc);
+  const rows = elig.map(s => {
+    const r = canBookRange(selSlot, svc.durationMin, s.id, selSvc);
+    return `<div class="card ${r.ok?'':'full'}" onclick="${r.ok?`pickStaffOk('${s.id}')`:''}" style="${r.ok?'':'opacity:.5;cursor:not-allowed'}">
+      <div class="nm">${s.name} ${r.ok?'✓':'✗'}</div>
+      <div class="sk">${r.ok ? '这个时段有空' : '这个时段已被占/不在岗'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('resultBox').innerHTML = `<div class="result ok">
+    <div class="big">选技师</div>
+    <div class="staff">${rows}</div>
+    <div style="font-size:13px;color:#8B9198;margin-top:10px">注意：指定员工时，每个格子都要该员工「在岗 + 空闲」才算可约。</div>
+  </div>`;
+}
+
+function pickStaffOk(id) {
+  const svc = DEMO.services.find(s => s.id === selSvc);
+  const r = canBookRange(selSlot, svc.durationMin, id, selSvc);
+  const staff = DEMO.staff.find(s => s.id === id);
+  document.getElementById('resultBox').innerHTML = `<div class="result ok">
+    <div class="big">✓ 预约成功（演示）</div>
+    <b>${selSlot}</b> · ${staff.name} · ${svc.name}（${svc.durationMin} 分钟）<br>
+    锁定格子：<code>${r.slots.join(' → ')}</code><br>
+    <div style="margin-top:10px;color:#12A150">真实系统中：这一步会用事务做 remaining-- 防超卖，同时写唯一索引 staffId+slotKey。</div>
+  </div>`;
+}
+
+/* 启动 */
+renderStaff(); renderSvc(); renderSlots();
+</script>
+</body>
+</html>

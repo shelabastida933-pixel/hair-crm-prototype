@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<title>发丝管家 v2</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ============ 登录 / 身份选择 ============ -->
+<section class="screen active" id="sc-login">
+  <div class="login-wrap">
+    <div class="brand-block">
+      <div class="logo">⌘</div>
+      <h1>发丝管家</h1>
+      <p class="tag">养发馆预约与客户管理</p>
+    </div>
+
+    <div class="role-list">
+      <div class="role-card" onclick="loginAs('customer')">
+        <div class="rc-ic">👤</div>
+        <div class="rc-txt">
+          <b>我是顾客</b>
+          <span>预约服务</span>
+        </div>
+        <div class="rc-arrow">›</div>
+      </div>
+      <div class="role-card" onclick="loginAs('staff')">
+        <div class="rc-ic">✂️</div>
+        <div class="rc-txt">
+          <b>我是员工</b>
+          <span>设置工作时间</span>
+        </div>
+        <div class="rc-arrow">›</div>
+      </div>
+      <div class="role-card" onclick="loginAs('manager')">
+        <div class="rc-ic">🏪</div>
+        <div class="rc-txt">
+          <b>我是店长</b>
+          <span>管理店铺与预约</span>
+        </div>
+        <div class="rc-arrow">›</div>
+      </div>
+    </div>
+
+    <div class="login-note">
+      演示版：顾客填手机号即可；员工/店长用账号密码
+      <br>演示账号：<b>wang / 123456</b>（店长）· <b>li / 123456</b>（员工）
+    </div>
+  </div>
+</section>
+
+<!-- ============ 顾客登录 ============ -->
+<section class="screen" id="sc-custlogin">
+  <div class="topbar">
+    <button class="back" onclick="go('sc-login')">←</button>
+    <span class="tb-title">顾客登录</span>
+  </div>
+  <div class="body pad">
+    <div class="field-note">首次预约自动注册，无需密码</div>
+    <label class="field">
+      <span>姓名</span>
+      <input id="ci-name" placeholder="如：李姐">
+    </label>
+    <label class="field">
+      <span>手机号</span>
+      <input id="ci-phone" type="tel" inputmode="numeric" maxlength="11" placeholder="11 位手机号">
+    </label>
+    <button class="btn btn-primary w100 big" onclick="doCustomerLogin()">进入</button>
+  </div>
+</section>
+
+<!-- ============ 员工/店长登录 ============ -->
+<section class="screen" id="sc-stafflogin">
+  <div class="topbar">
+    <button class="back" onclick="go('sc-login')">←</button>
+    <span class="tb-title">员工 / 店长登录</span>
+  </div>
+  <div class="body pad">
+    <label class="field">
+      <span>账号</span>
+      <input id="si-user" placeholder="用户名" autocapitalize="off">
+    </label>
+    <label class="field">
+      <span>密码</span>
+      <input id="si-pass" type="password" placeholder="密码">
+    </label>
+    <button class="btn btn-primary w100 big" onclick="doStaffLogin()">登录</button>
+    <div class="login-note" style="margin-top:24px">
+      演示账号：<br>
+      店长 wang / 123456<br>
+      员工 li / 123456<br>
+      员工 zhang / 123456
+    </div>
+  </div>
+</section>
+
+<!-- ============ 顾客：选店 → 选服务 → 选时段 ============ -->
+<section class="screen" id="sc-book">
+  <div class="topbar">
+    <button class="back" onclick="logout()">←</button>
+    <span class="tb-title" id="bk-shop">预约</span>
+    <button class="tb-right" id="bk-mine" onclick="showMyBookings()">我的预约</button>
+  </div>
+
+  <div class="body">
+    <!-- 选服务 -->
+    <div class="sec">
+      <div class="sec-h">选择服务</div>
+      <div class="chips" id="svc-chips"></div>
+    </div>
+
+    <!-- 选日期 -->
+    <div class="sec">
+      <div class="sec-h">选择日期</div>
+      <div class="date-row" id="date-row"></div>
+    </div>
+
+    <!-- 选技师（受开关控制） -->
+    <div class="sec" id="staff-sec" style="display:none">
+      <div class="sec-h">选择技师</div>
+      <div class="chips" id="staff-chips"></div>
+    </div>
+
+    <!-- 选时段 -->
+    <div class="sec">
+      <div class="sec-h">选择时间 <span class="sec-tip">30 分钟为一格</span></div>
+      <div class="slots" id="slot-grid"></div>
+    </div>
+  </div>
+
+  <div class="footer-bar" id="bk-footer" style="display:none">
+    <div class="fb-info" id="fb-info"></div>
+    <button class="btn btn-primary" onclick="confirmBooking()" id="fb-btn">确认预约</button>
+  </div>
+</section>
+
+<!-- ============ 顾客：我的预约 ============ -->
+<section class="screen" id="sc-mine">
+  <div class="topbar">
+    <button class="back" onclick="go('sc-book')">←</button>
+    <span class="tb-title">我的预约</span>
+  </div>
+  <div class="body pad" id="mine-list"></div>
+</section>
+
+<!-- ============ 员工端 ============ -->
+<section class="screen" id="sc-staff">
+  <div class="topbar">
+    <span class="tb-title" id="st-title">我的工作台</span>
+    <button class="tb-right" onclick="logout()">退出</button>
+  </div>
+  <div class="tabs" id="staff-tabs">
+    <div class="tab on" data-t="schedule" onclick="staffTab('schedule')">工作时间</div>
+    <div class="tab" data-t="today" onclick="staffTab('today')">今天</div>
+  </div>
+  <div class="body pad" id="staff-body"></div>
+</section>
+
+<!-- ============ 店长端 ============ -->
+<section class="screen" id="sc-manager">
+  <div class="topbar">
+    <span class="tb-title" id="mg-title">店铺管理</span>
+    <button class="tb-right" onclick="logout()">退出</button>
+  </div>
+  <div class="tabs" id="mg-tabs">
+    <div class="tab on" data-t="today" onclick="mgTab('today')">今日</div>
+    <div class="tab" data-t="book" onclick="mgTab('book')">代客预约</div>
+    <div class="tab" data-t="staff" onclick="mgTab('staff')">员工</div>
+    <div class="tab" data-t="shop" onclick="mgTab('shop')">店铺</div>
+  </div>
+  <div class="body pad" id="mg-body"></div>
+</section>
+
+<!-- 弹层 -->
+<div class="sheet-mask" id="mask" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet-body"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/db.js"></script>
+<script src="js/booking.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
