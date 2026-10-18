@@ -14,7 +14,10 @@ async function boot() {
   if (!inited) await seedDemo();
   // 载入设置
   document.getElementById('setShop').value = await Store.getSetting('shop', '');
-  document.getElementById('setPhone').value = await Store.getSetting('phone', '');
+  const _ph = await Store.getSetting('phone', '');
+  document.getElementById('setPhone').value = _ph;
+  const _pw = document.getElementById('phoneWarn');
+  if (_pw) _pw.style.display = _ph ? 'none' : 'block';
   await renderHome();
 }
 
@@ -309,6 +312,7 @@ async function openCompare() {
   const first = photos[0];
   const last = photos[photos.length - 1];
   const shop = await Store.getSetting('shop', '');
+  const phone = await Store.getSetting('phone', '');
 
   // 同一天拍的：用「首次/第N次」代替重复日期
   const sameDay = new Date(first.takenAt).toDateString() === new Date(last.takenAt).toDateString();
@@ -330,6 +334,7 @@ async function openCompare() {
       lastDate: lastLabel,
       customerName: c.name,
       shopName: shop || '养发馆',
+      shopPhone: phone || '',
       brand: '#00A0B4',
     });
     S.cmpBlob = blob;
@@ -464,7 +469,11 @@ async function renderStats() {
     `客户 <b>${c.length}</b> 位<br>照片 <b>${p.length}</b> 张<br>占用 <b>${(bytes / 1048576).toFixed(1)}</b> MB`;
 }
 async function saveShop(v) { await Store.setSetting('shop', v.trim()); }
-async function savePhone(v) { await Store.setSetting('phone', v.trim()); }
+async function savePhone(v) {
+  await Store.setSetting('phone', v.trim());
+  const w = document.getElementById('phoneWarn');
+  if (w) w.style.display = v.trim() ? 'none' : 'block';
+}
 
 /** 设置页：环境自检 —— 人话版，给 40-55 岁的人看 */
 async function runDiag() {

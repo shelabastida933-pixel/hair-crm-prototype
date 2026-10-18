@@ -53,9 +53,12 @@
         <input id="setShop" placeholder="例如：张姐养发馆" oninput="saveShop(this.value)">
       </label>
       <label class="field">
-        <span>电话</span>
-        <input id="setPhone" type="tel" placeholder="选填" oninput="savePhone(this.value)">
+        <span>电话（会印在分享图上，客户找你用）</span>
+        <input id="setPhone" type="tel" placeholder="例如：13800138000" oninput="savePhone(this.value)">
       </label>
+      <div class="warn-box" id="phoneWarn" style="margin-bottom:6px;display:none">
+        还没填电话 —— 分享给客户的对比图底部会缺联系方式，建议补上。
+      </div>
 
       <div class="sec-title">数据</div>
       <div class="stat-box" id="statBox">…</div>

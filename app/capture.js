@@ -115,13 +115,13 @@ function loadImg(src) {
 /* ---------------- 2. 效果对比图生成 ---------------- */
 
 /**
- * 合成「效果对比图」——左首图 + 右最新图 + 底部水印
+ * 合成「效果对比图」——左首图 + 右最新图 + 底部水印（店名 + 电话）
  * 返回 PNG Blob
  */
 async function makeCompareImage(opt) {
   const {
     firstBlob, lastBlob, firstDate, lastDate,
-    customerName, shopName, brand,
+    customerName, shopName, shopPhone, brand,
     text1, text2,
   } = opt;
 
@@ -129,7 +129,9 @@ async function makeCompareImage(opt) {
   const HEAD = 150;               // 标题区
   const PHOTO_H = 1180;           // 照片区高
   const CAP_H = 90;               // 日期条
-  const FOOT = 160;               // 底部水印区
+  const hasPhone = !!(shopPhone && String(shopPhone).trim());
+  // 有电话时水印区高一档（多一行）
+  const FOOT = hasPhone ? 220 : 160;
   const H = HEAD + PHOTO_H + CAP_H + FOOT;
 
   const cv = document.createElement('canvas');
@@ -228,14 +230,33 @@ async function makeCompareImage(opt) {
   ctx.fillStyle = '#F7FAFB';
   ctx.fillRect(0, fy, W, FOOT);
 
-  ctx.fillStyle = '#00A0B4';
-  ctx.font = '700 40px "PingFang SC","Microsoft YaHei",sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(shopName || '', W / 2, fy + 66);
 
-  ctx.fillStyle = '#8B9198';
-  ctx.font = '400 26px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText('坚持护理，效果看得见', W / 2, fy + 112);
+  if (hasPhone) {
+    // 店名
+    ctx.fillStyle = '#00A0B4';
+    ctx.font = '700 44px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(shopName || '', W / 2, fy + 66);
+
+    // 电话（客户最需要的信息，用深色 + 图标强调）
+    ctx.fillStyle = '#1C1E26';
+    ctx.font = '700 42px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('☎ ' + String(shopPhone).trim(), W / 2, fy + 128);
+
+    // 标语
+    ctx.fillStyle = '#8B9198';
+    ctx.font = '400 26px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('坚持护理，效果看得见', W / 2, fy + 182);
+  } else {
+    // 没填电话：保持原样，但提示补全
+    ctx.fillStyle = '#00A0B4';
+    ctx.font = '700 40px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(shopName || '', W / 2, fy + 66);
+
+    ctx.fillStyle = '#8B9198';
+    ctx.font = '400 26px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('坚持护理，效果看得见', W / 2, fy + 112);
+  }
 
   /* 导出 */
   return new Promise((resolve) => {
