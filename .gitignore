@@ -1,2 +1,4 @@
 _test/
 node_modules/
+v2/api/.wrangler/
+v2/api/node_modules/
