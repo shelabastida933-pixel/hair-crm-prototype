@@ -14,20 +14,121 @@ const S = {
   staffTab: 'schedule',
 };
 
+/* ==========================================================================
+   云端适配：让原有 Store.* 调用在 cloud 模式下自动走 API
+   
+   为什么不逐个改调用点：
+   三端有 20+ 处 Store 调用，逐个替换容易漏，且以后维护成本高。
+   这里用「同名方法覆盖」的方式，业务代码一行不用改。
+   ========================================================================== */
+
+function installCloudAdapter() {
+  if (API_CONFIG.mode !== 'cloud') return;
+
+  // 客户
+  Store.findCustomerByPhone = async (phone) => {
+    // 后端没有按手机号查询用户列表的接口，登录时后端会处理
+    return null;
+  };
+  Store.saveCustomer = async (c) => c;      // 后端在登录接口内自动建/取
+  Store.customer = async (id) => {
+    // 会话恢复时用：从本地会话缓存拿
+    return S.me && S.me.id === id ? S.me : null;
+  };
+
+  // 预约
+  Store.bookingsOf = async (shopId) => CloudAPI.listBookings(shopId);
+  Store.bookingsOfCustomer = async (cid) => CloudAPI.listBookings(null, null, cid);
+  Store.booking = async (id) => {
+    const list = await CloudAPI.listBookings(S.shop?.id);
+    return list.find(b => b.id === id) || null;
+  };
+  Store.saveBooking = async (b) => {
+    if (b.id) {
+      // 更新（取消等）
+      if (b.status === 'cancelled') return CloudAPI.cancelBooking(b.id);
+      return b;
+    }
+    return CloudAPI.createBooking({
+      shopId: b.shopId,
+      customerId: b.customerId,
+      serviceId: b.serviceId,
+      dateKey: b.dateKey,
+      startTime: b.startTime,
+      staffId: b.staffId || null,
+    });
+  };
+
+  // 排班
+  Store.schedulesOf = async (staffId) => {
+    const r = await CloudAPI.getSchedule(staffId);
+    return r ? [r] : [];
+  };
+  Store.saveSchedule = async (s) => CloudAPI.saveSchedule({
+    staffId: s.staffId, shopId: s.shopId,
+    weekdays: s.weekdays, segments: s.segments,
+  });
+
+  // 店铺
+  Store.shop = async (id) => CloudAPI.getShop();
+  Store.saveShop = async (s) => CloudAPI.updateShop(s);
+
+  // 员工（登录用）
+  Store.staff = async (id) => S.staff.find(x => x.id === id) || null;
+}
+
+/* 本地 session 存储（云端模式下也要记住登录态） */
+const SessionStore = {
+  KEY: 'haircrm_session',
+  get() {
+    try { return JSON.parse(localStorage.getItem(this.KEY) || 'null'); } catch (e) { return null; }
+  },
+  set(v) { localStorage.setItem(this.KEY, JSON.stringify(v)); },
+  clear() { localStorage.removeItem(this.KEY); },
+};
+
 /* ---------------- 启动 ---------------- */
 window.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {
-  await openDB();
-  await Store.seedIfEmpty();
-  // 恢复登录态
-  const saved = await Store.getSetting('session', null);
+  installCloudAdapter();
+
+  if (API_CONFIG.mode === 'cloud') {
+    // 云端：先确认后端可用
+    try {
+      await CloudAPI.init();          // 幂等，表已存在则跳过
+    } catch (e) {
+      console.error('后端连接失败', e);
+      toast('后端连接失败，请检查网络');
+    }
+  } else {
+    await openDB();
+    await Store.seedIfEmpty();
+  }
+
+  const saved = API_CONFIG.mode === 'cloud' ? SessionStore.get() : await Store.getSetting('session', null);
   if (saved) {
     await restoreSession(saved);
   }
 }
 
 async function loadAll() {
+  if (API_CONFIG.mode === 'cloud') {
+    // ★ 云端模式：一次拉齐
+    S.shop = await CloudAPI.getShop();
+    S.shops = [S.shop];
+    S.staff = await CloudAPI.listStaff(S.shop.id);
+    S.services = await CloudAPI.listServices(S.shop.id);
+    S.bookings = await CloudAPI.listBookings(S.shop.id);
+    S.schedules = [];
+    for (const st of S.staff) {
+      const sc = await CloudAPI.getSchedule(st.id);
+      if (sc) S.schedules.push({ staffId: sc.staffId, weekdays: sc.weekdays, segments: sc.segments });
+    }
+    S.customers = [];
+    return;
+  }
+
   S.shops = await DB.all('shops');
   S.shop = S.shops[0] || null;
   if (!S.shop) return;
@@ -66,34 +167,55 @@ async function doCustomerLogin() {
   if (!name) return toast('请填姓名');
   if (!/^1\d{10}$/.test(phone)) return toast('手机号格式不对');
 
-  let c = await Store.findCustomerByPhone(phone);
-  if (!c) {
-    c = await Store.saveCustomer({ name, phone, shopId: S.shop?.id || null });
-  } else if (c.name !== name) {
-    c.name = name;
-    await Store.saveCustomer(c);
+  try {
+    if (API_CONFIG.mode === 'cloud') {
+      // ★ 云端：后端负责建/取用户
+      const user = await CloudAPI.loginCustomer(name, phone);
+      S.me = user; S.role = 'customer';
+      SessionStore.set({ role: 'customer', id: user.id, name: user.name, phone: user.phone });
+    } else {
+      let c = await Store.findCustomerByPhone(phone);
+      if (!c) c = await Store.saveCustomer({ name, phone, shopId: S.shop?.id || null });
+      else if (c.name !== name) { c.name = name; await Store.saveCustomer(c); }
+      S.me = c; S.role = 'customer';
+      await Store.setSetting('session', { role: 'customer', id: c.id });
+    }
+    await loadAll();
+    enterCustomer();
+  } catch (e) {
+    toast(e.message || '登录失败');
   }
-  S.me = c; S.role = 'customer';
-  await Store.setSetting('session', { role: 'customer', id: c.id });
-  await loadAll();
-  enterCustomer();
 }
 
 async function doStaffLogin() {
   const u = document.getElementById('si-user').value.trim();
   const p = document.getElementById('si-pass').value.trim();
-  const all = await DB.all('staff');
-  const st = all.find(x => x.username === u && x.password === p && x.status === 'active');
-  if (!st) return toast('账号或密码不对');
-  S.me = st;
-  S.role = st.role === 'manager' ? 'manager' : 'staff';
-  await Store.setSetting('session', { role: S.role, id: st.id });
-  await loadAll();
-  if (S.role === 'manager') enterManager(); else enterStaff();
+
+  try {
+    let st;
+    if (API_CONFIG.mode === 'cloud') {
+      st = await CloudAPI.loginStaff(u, p);
+      S.me = st;
+      S.role = st.role === 'manager' ? 'manager' : 'staff';
+      SessionStore.set({ role: S.role, id: st.id, name: st.name });
+    } else {
+      const all = await DB.all('staff');
+      st = all.find(x => x.username === u && x.password === p && x.status === 'active');
+      if (!st) return toast('账号或密码不对');
+      S.me = st;
+      S.role = st.role === 'manager' ? 'manager' : 'staff';
+      await Store.setSetting('session', { role: S.role, id: st.id });
+    }
+    await loadAll();
+    if (S.role === 'manager') enterManager(); else enterStaff();
+  } catch (e) {
+    toast(e.message || '登录失败');
+  }
 }
 
 async function logout() {
-  await Store.setSetting('session', null);
+  if (API_CONFIG.mode === 'cloud') SessionStore.clear();
+  else await Store.setSetting('session', null);
   S.me = null; S.role = null;
   go('sc-login');
 }
@@ -162,11 +284,26 @@ async function renderSlots() {
   const grid = document.getElementById('slot-grid');
   if (!svc) { grid.innerHTML = '<div class="empty">请先选服务</div>'; return; }
 
-  const avail = dayAvailability({
-    shop: S.shop, staff: S.staff, schedules: S.schedules,
-    bookings: S.bookings, services: S.services,
-    service: svc, dateTs: S.sel.dateTs, staffId: S.sel.staffId,
-  });
+  let avail;
+  if (API_CONFIG.mode === 'cloud') {
+    // ★ 云端：容量由后端按真实数据算（含技能过滤、跨格锁位）
+    const dk = dateKey(S.sel.dateTs);
+    try {
+      const slots = await CloudAPI.availability(S.shop.id, svc.id, dk, S.sel.staffId);
+      avail = slots.map(s => ({
+        time: s.time, ok: s.ok, reason: s.reason, remaining: s.remaining, capacity: s.remaining,
+      }));
+    } catch (e) {
+      grid.innerHTML = `<div class="empty">加载失败：${e.message}</div>`;
+      return;
+    }
+  } else {
+    avail = dayAvailability({
+      shop: S.shop, staff: S.staff, schedules: S.schedules,
+      bookings: S.bookings, services: S.services,
+      service: svc, dateTs: S.sel.dateTs, staffId: S.sel.staffId,
+    });
+  }
 
   grid.innerHTML = avail.map(a => {
     const cls = ['slot'];
@@ -199,35 +336,48 @@ async function confirmBooking() {
   const svc = S.services.find(x => x.id === S.sel.serviceId);
   if (!svc || !S.sel.slot) return;
 
-  const r = canBookRange({
-    shop: S.shop, staff: S.staff, schedules: S.schedules,
-    bookings: S.bookings, services: S.services,
-    service: svc, startSlot: S.sel.slot, dateTs: S.sel.dateTs, staffId: S.sel.staffId,
-  });
-  if (!r.ok) return toast(r.reason || '这个时段约不了');
+  try {
+    if (API_CONFIG.mode === 'cloud') {
+      // ★ 云端：后端会再校验一次（防超卖），前端不用算
+      await CloudAPI.createBooking({
+        shopId: S.shop.id,
+        customerId: S.me.id,
+        serviceId: svc.id,
+        dateKey: dateKey(S.sel.dateTs),
+        startTime: S.sel.slot,
+        staffId: S.sel.staffId || null,
+      });
+    } else {
+      const r = canBookRange({
+        shop: S.shop, staff: S.staff, schedules: S.schedules,
+        bookings: S.bookings, services: S.services,
+        service: svc, startSlot: S.sel.slot, dateTs: S.sel.dateTs, staffId: S.sel.staffId,
+      });
+      if (!r.ok) return toast(r.reason || '这个时段约不了');
 
-  // 未指定技师且开关关闭 → 进入待分配
-  const assignMode = S.sel.staffId ? 'customer_pick' : 'shop_assign';
+      await Store.saveBooking({
+        shopId: S.shop.id,
+        customerId: S.me.id,
+        customerName: S.me.name,
+        customerPhone: S.me.phone,
+        serviceId: svc.id,
+        serviceName: svc.name,
+        durationMin: svc.durationMin,
+        staffId: S.sel.staffId || null,
+        assignMode: S.sel.staffId ? 'customer_pick' : 'shop_assign',
+        startTime: S.sel.slot,
+        dateKey: dateKey(S.sel.dateTs),
+        status: 'confirmed',
+      });
+    }
 
-  await Store.saveBooking({
-    shopId: S.shop.id,
-    customerId: S.me.id,
-    customerName: S.me.name,
-    customerPhone: S.me.phone,
-    serviceId: svc.id,
-    serviceName: svc.name,
-    durationMin: svc.durationMin,
-    staffId: S.sel.staffId || null,
-    assignMode,
-    startTime: S.sel.slot,
-    dateKey: dateKey(S.sel.dateTs),
-    status: 'confirmed',
-  });
-
-  await loadAll();
-  S.sel.slot = null;
-  toast('预约成功 ✓');
-  await showMyBookings();
+    await loadAll();
+    S.sel.slot = null;
+    toast('预约成功 ✓');
+    await showMyBookings();
+  } catch (e) {
+    toast(e.message || '预约失败');
+  }
 }
 
 async function showMyBookings() {
@@ -449,9 +599,30 @@ async function renderMgToday() {
 async function mgAssign(id) {
   const b = await Store.booking(id);
   const svc = S.services.find(s => s.id === b.serviceId);
+
+  if (API_CONFIG.mode === 'cloud') {
+    // ★ 云端：列出全部会做该项目的员工，真正的可用性由后端在分配时校验
+    //   （后端会检查在岗、技能、时段冲突，避免前端算错）
+    const cands = S.staff.filter(s => !svc?.skill || (s.skills || []).includes(svc.skill));
+    const rows = cands.map(s => `
+      <div class="list-card" onclick="doAssign('${b.id}','${s.id}')">
+        <div class="lc-top">
+          <div class="lc-name">${esc(s.name)}</div>
+          <div class="lc-tag ok">选择</div>
+        </div>
+      </div>`).join('');
+    openSheet(`<h3>给 ${esc(b.customerName || '客户')} 分配技师</h3>
+      <div class="note-box" style="margin-bottom:14px">${b.startTime} · ${esc(b.serviceName)} · ${b.durationMin}分钟<br>
+      系统会自动校验该技师是否在岗、是否会做、是否与其他预约冲突。</div>
+      ${rows || '<div class="empty">没有会做这个项目的员工</div>'}`);
+    return;
+  }
+
   const slot = { key: b.dateKey + 'T' + b.startTime, time: b.startTime, min: toMin(b.startTime) };
-  const cands = S.staff.filter(s => s.status === 'active' &&
-    (!svc?.skill || (s.skills || []).includes(svc.skill)));
+  const cands = S.staff.filter(s =>
+    (s.status === undefined || s.status === 'active') &&
+    (!svc?.skill || (s.skills || []).includes(svc.skill))
+  );
 
   const rows = cands.map(s => {
     const busy = staffBusy(s.id, S.bookings.filter(x => x.id !== b.id), slot);
@@ -472,14 +643,22 @@ async function mgAssign(id) {
 }
 
 async function doAssign(bid, sid) {
-  const b = await Store.booking(bid);
-  b.staffId = sid;
-  b.assignMode = 'shop_assign';
-  await Store.saveBooking(b);
-  await loadAll();
-  closeSheet();
-  toast('已分配');
-  mgTab('today');
+  try {
+    if (API_CONFIG.mode === 'cloud') {
+      await CloudAPI.assignStaff(bid, sid);
+    } else {
+      const b = await Store.booking(bid);
+      b.staffId = sid;
+      b.assignMode = 'shop_assign';
+      await Store.saveBooking(b);
+    }
+    await loadAll();
+    closeSheet();
+    toast('已分配');
+    mgTab('today');
+  } catch (e) {
+    toast(e.message || '分配失败');
+  }
 }
 
 async function mgCancel(id) {

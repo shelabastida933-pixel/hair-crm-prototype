@@ -13,8 +13,11 @@
    ========================================================================== */
 
 const API_CONFIG = {
-  mode: 'local',                 // ★ 'local' | 'cloud'
-  baseUrl: '',                   // cloud 模式下填后端地址
+  mode: 'cloud',                 // ★ 'local' | 'cloud'
+  // ★ 线上后端地址
+  //   注：本机网络对 workers.dev 的 HTTPS 有干扰，用 http 可通；
+  //   手机/正常网络用 https 也可以（Worker 两者都接受）
+  baseUrl: 'https://haircrm-api.haircrm.workers.dev',
 };
 
 /* ---------------- 实体定义（与方案文档一致） ---------------- */
@@ -102,7 +105,6 @@ const Cloud = {
 
 /* 统一入口：按 mode 选实现 */
 function backend() { return API_CONFIG.mode === 'cloud' ? Cloud : Local; }
-
 const DB = {
   put(store, obj)        { return backend().put(store, obj); },
   get(store, id)         { return backend().get(store, id); },

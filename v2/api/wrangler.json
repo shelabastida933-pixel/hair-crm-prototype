@@ -1,0 +1,14 @@
+{
+  "name": "haircrm-api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "worker.js",
+  "compatibility_date": "2026-01-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "haircrm",
+      "database_id": "74d01ca7-8c0f-4383-9cb1-83b696da8e79"
+    }
+  ]
+}
