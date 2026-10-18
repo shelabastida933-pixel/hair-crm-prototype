@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>总部运营中心 · 发丝管家</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--ink:#1C1E26;--gray:#8B9198;--line:#E8EBED;--bg:#F4F6F7;
+      --brand:#00A0B4;--brand-l:#E6F7F9;--red:#E5484D;--amber:#F5A623;--green:#12A150}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6}
+
+/* 顶部 */
+.topbar{background:#fff;border-bottom:1px solid var(--line);padding:0 32px;
+  display:flex;align-items:center;height:64px;position:sticky;top:0;z-index:50}
+.logo{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700}
+.logo .ic{width:32px;height:32px;border-radius:9px;background:var(--brand);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:17px}
+.topbar .period{margin-left:20px;color:var(--gray);font-size:13px;
+  background:#F1F3F5;padding:4px 12px;border-radius:20px}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:16px;
+  font-size:13px;color:var(--gray)}
+.topbar .right b{color:var(--ink)}
+.demo-tag{background:#FFF4E6;color:#C77E00;padding:3px 10px;border-radius:20px;font-size:12px}
+
+.wrap{max-width:1360px;margin:0 auto;padding:24px 32px 60px}
+
+/* 概览卡片 */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.kpi .lbl{font-size:13px;color:var(--gray);margin-bottom:6px}
+.kpi .val{font-size:28px;font-weight:700;letter-spacing:-.5px}
+.kpi .chg{font-size:13px;margin-top:4px;font-weight:600}
+.kpi .chg.up{color:var(--green)}
+.kpi .chg.down{color:var(--red)}
+
+/* 卡片通用 */
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:20px;overflow:hidden}
+.card-h{display:flex;align-items:center;gap:10px;padding:18px 22px;border-bottom:1px solid var(--line)}
+.card-h h2{font-size:16px;font-weight:700;flex:1}
+.card-h .sub{font-size:13px;color:var(--gray)}
+.card-b{padding:0 22px 20px}
+
+/* 预警 */
+.alert{display:flex;gap:14px;padding:16px 18px;border-radius:12px;margin-top:12px;
+  border-left:4px solid;align-items:flex-start}
+.alert.red{background:#FEF6F6;border-color:var(--red)}
+.alert.amber{background:#FFFBF2;border-color:var(--amber)}
+.alert .em{font-size:22px;line-height:1.2;flex-shrink:0}
+.alert .tx{flex:1}
+.alert .tx .t1{font-size:15px;font-weight:700;margin-bottom:3px}
+.alert .tx .t1 .shop{color:var(--brand);margin-right:6px}
+.alert .tx .t2{font-size:13.5px;color:#4A5158;line-height:1.7}
+.alert .tx .t3{font-size:13px;color:var(--gray);margin-top:6px;padding-top:6px;
+  border-top:1px dashed rgba(0,0,0,.08)}
+.alert .tx .t3 b{color:var(--ink)}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:right;padding:12px 10px;color:var(--gray);font-weight:600;font-size:12.5px;
+  white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child{text-align:left}
+td{text-align:right;padding:14px 10px;border-bottom:1px solid #F2F4F5;
+  font-variant-numeric:tabular-nums}
+td:first-child{text-align:left;font-weight:600}
+tr:last-child td{border-bottom:none}
+tr.bad{background:#FFF9F9}
+tr.good{background:#F7FDF9}
+td .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11.5px;
+  font-weight:600;margin-left:6px}
+.tag.red{background:#FDECEC;color:var(--red)}
+.tag.green{background:#ECFAF2;color:var(--green)}
+.tag.amber{background:#FEF4E6;color:#C77E00}
+.up{color:var(--green);font-weight:600}
+.down{color:var(--red);font-weight:600}
+
+/* 迷你趋势 */
+.spark{display:inline-flex;align-items:flex-end;gap:2px;height:24px}
+.spark i{width:6px;background:var(--brand);border-radius:2px 2px 0 0;display:block;opacity:.85}
+.spark.down i{background:var(--red)}
+
+/* 两列 */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+/* 人效条 */
+.bar-wrap{display:flex;align-items:center;gap:10px}
+.bar{flex:1;height:8px;background:#EEF1F3;border-radius:4px;overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--brand)}
+.bar.low i{background:var(--red)}
+.bar.warn i{background:var(--amber)}
+
+.foot{text-align:center;color:var(--gray);font-size:12px;padding:24px 0}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="ic">⌘</span> 总部运营中心</div>
+  <div class="period" id="period"></div>
+  <div class="right">
+    <span class="demo-tag">演示数据</span>
+    <span>总部管理员 · <b>admin</b></span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 概览 -->
+  <div class="kpis" id="kpis"></div>
+
+  <!-- 异动预警 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>⚠️ 需要关注</h2>
+      <span class="sub" id="alertCount"></span>
+    </div>
+    <div class="card-b" id="alerts"></div>
+  </div>
+
+  <!-- 横向对比 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>各店横向对比</h2>
+      <span class="sub">按营收排序 · 红底 = 需要关注</span>
+    </div>
+    <div class="card-b">
+      <table id="cmpTable">
+        <thead>
+          <tr>
+            <th>门店</th>
+            <th>营收</th>
+            <th>环比</th>
+            <th>预约数</th>
+            <th>到店率</th>
+            <th>客单价</th>
+            <th>新客数</th>
+            <th>复购率</th>
+            <th>卡内余额<br><span style="font-weight:400;font-size:11px">人数 / 金额</span></th>
+            <th>人效</th>
+            <th>近6月趋势</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 人效 + 卡余额 -->
+  <div class="grid2">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-h"><h2>人效：工时利用率</h2></div>
+      <div class="card-b">
+        <div style="font-size:13px;color:var(--gray);margin-bottom:16px">
+          排了班但没活干 = 空转成本。低于 60% 需留意，低于 45% 必须调整排班。
+        </div>
+        <div id="utilList"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:0">
+      <div class="card-h"><h2>卡内余额沉淀（挽回价值）</h2></div>
+      <div class="card-b">
+        <div style="font-size:13px;color:var(--gray);margin-bottom:16px">
+          钱已经收了，客户不来 = 未来收入蒸发。这是最该优先挽回的名单。
+        </div>
+        <div id="cardList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    数据说明：本页为演示数据，用于展示总部后台的对比与预警形态。<br>
+    真实数据接入后，指标口径与这里保持一致。
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+const CN = n => '¥' + n.toLocaleString('zh-CN');
+const P = x => (x * 100).toFixed(0) + '%';
+
+document.getElementById('period').textContent = HQ.period + ' · ' + HQ.company;
+
+/* ---------- KPI ---------- */
+const t = hqTotals();
+document.getElementById('kpis').innerHTML = `
+  <div class="kpi">
+    <div class="lbl">门店数</div>
+    <div class="val">${t.shopCount}</div>
+    <div class="chg">在营</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">总营收</div>
+    <div class="val">${CN(t.revenue)}</div>
+    <div class="chg ${t.revenueChg >= 0 ? 'up' : 'down'}">环比 ${t.revenueChg >= 0 ? '+' : ''}${P(t.revenueChg)}</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">预约 → 到店</div>
+    <div class="val">${t.bookings.toLocaleString()}<span style="font-size:18px;color:var(--gray)"> → </span>${t.arrived.toLocaleString()}</div>
+    <div class="chg">${(t.bookings - t.arrived).toLocaleString()} 人未到店</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">整体到店率</div>
+    <div class="val">${P(t.arriveRate)}</div>
+    <div class="chg">全公司平均</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">平均客单价</div>
+    <div class="val">${CN(Math.round(t.avgTicket))}</div>
+    <div class="chg">营收 ÷ ${t.orders.toLocaleString()} 单</div>
+  </div>
+`;
+
+/* ---------- 预警 ---------- */
+const alerts = hqAlerts();
+document.getElementById('alertCount').textContent =
+  `${alerts.filter(a => a.level === 'red').length} 条紧急 · ${alerts.filter(a => a.level === 'amber').length} 条关注`;
+
+document.getElementById('alerts').innerHTML = alerts.map(a => `
+  <div class="alert ${a.level}">
+    <div class="em">${a.icon}</div>
+    <div class="tx">
+      <div class="t1"><span class="shop">${a.shop}</span>${a.title}</div>
+      <div class="t2">${a.detail}</div>
+      <div class="t3"><b>建议：</b>${a.action}</div>
+    </div>
+  </div>
+`).join('');
+
+/* ---------- 横向对比 ---------- */
+const ms = HQ.shops.map(hqShopMetrics).sort((a, b) => b.revenue - a.revenue);
+const maxTrend = Math.max(...ms.flatMap(m => m.trend));
+
+document.querySelector('#cmpTable tbody').innerHTML = ms.map(m => {
+  const bad = m.revenueChg < 0 || m.arriveRate < 0.75;
+  const downTrend = m.trend[m.trend.length-1] < m.trend[0];
+  return `<tr class="${bad ? 'bad' : ''}">
+    <td>${m.name}<span class="tag ${m.revenueChg < 0 ? 'red' : 'green'}">${m.manager}</span></td>
+    <td>${CN(m.revenue)}</td>
+    <td class="${m.revenueChg >= 0 ? 'up' : 'down'}">${m.revenueChg >= 0 ? '+' : ''}${P(m.revenueChg)}</td>
+    <td>${m.bookings}</td>
+    <td class="${m.arriveRate < 0.75 ? 'down' : ''}">${P(m.arriveRate)}</td>
+    <td>${CN(m.avgTicket)}</td>
+    <td>${m.newCustomers}</td>
+    <td class="${m.repeatRate < 0.35 ? 'down' : ''}">${P(m.repeatRate)}</td>
+    <td>${m.cardHolding} 人<br><span style="color:var(--gray);font-size:12px">${CN(m.cardAmount)}</span></td>
+    <td>${P(m.utilization)}</td>
+    <td>
+      <span class="spark ${downTrend ? 'down' : ''}">
+        ${m.trend.map(v => `<i style="height:${Math.round(v / maxTrend * 24)}px"></i>`).join('')}
+      </span>
+    </td>
+  </tr>`;
+}).join('');
+
+/* ---------- 人效 ---------- */
+document.getElementById('utilList').innerHTML = ms.map(m => {
+  const critical = m.utilization < 0.45;   // 必须调整
+  const warn = m.utilization < 0.60;       // 需留意
+  const cls = critical ? 'down' : (warn ? '' : '');
+  const mark = critical ? ' 🔴' : (warn ? ' ⚠️' : '');
+  return `<div style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px">
+      <span>${m.name}</span>
+      <span class="${cls}" style="${warn && !critical ? 'color:#C77E00;font-weight:600' : ''}">${P(m.utilization)}${mark}</span>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar ${critical ? 'low' : (warn ? 'warn' : '')}"><i style="width:${Math.min(100, m.utilization*100)}%"></i></div>
+    </div>
+  </div>`;
+}).join('');
+
+/* ---------- 卡余额 ---------- */
+const cardSorted = [...ms].sort((a, b) => b.cardAmount - a.cardAmount);
+document.getElementById('cardList').innerHTML = cardSorted.map(m => `
+  <div style="display:flex;justify-content:space-between;align-items:center;
+    padding:12px 0;border-bottom:1px solid #F2F4F5;font-size:13.5px">
+    <span>${m.name}</span>
+    <span><b>${m.cardHolding}</b> 人 · <b style="color:var(--brand)">${CN(m.cardAmount)}</b></span>
+  </div>
+`).join('');
+</script>
+</body>
+</html>
